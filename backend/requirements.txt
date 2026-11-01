@@ -7,6 +7,7 @@ pydantic-settings==2.6.0
 # Database / auth
 supabase==2.9.1
 psycopg2-binary==2.9.13
+PyJWT==2.15.1
 
 # Storage (Cloudflare R2 is S3-compatible)
 boto3==1.35.49
