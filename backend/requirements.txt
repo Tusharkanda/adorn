@@ -1,0 +1,33 @@
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+pydantic==2.9.2
+pydantic-settings==2.6.0
+
+# Database / auth
+supabase==2.9.1
+psycopg2-binary==2.9.13
+
+# Storage (Cloudflare R2 is S3-compatible)
+boto3==1.35.49
+
+# Background removal / segmentation
+rembg==2.0.86
+onnxruntime==1.26.0
+Pillow>=12.1.0
+
+# Landmark detection (jewelry placement: face/hand keypoints)
+mediapipe>=0.10.14
+
+# Image generation (Gemini API)
+google-genai>=1.0.0
+
+# PDF / catalogue export
+WeasyPrint==62.3
+
+# HTTP client
+httpx==0.27.2
+
+# Dev/testing
+python-dotenv==1.0.1
+pytest==8.3.3
