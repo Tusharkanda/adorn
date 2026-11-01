@@ -8,12 +8,12 @@ Update this file after every meaningful step: what changed, what was tested, wha
 - [x] Step 1: Model library — photograph/collect 5-6 model reference images (placeholder images used for now, per user decision; swap for real photos later with no schema change)
 - [ ] Step 2: Core pipeline proof — upload → rembg segment → Gemini composite onto ONE hardcoded model (no UI, script-level test). Run as TWO separate checks: apparel composite, and jewelry composite (with mediapipe landmark placement). Each is its own go/no-go — see decision log below.
 - [x] Step 3: FastAPI endpoints (products/upload, jobs, job polling) wired to Supabase + R2
-- [ ] Step 4: Model selection + async job handling + minimal dashboard (frontend)
+- [x] Step 4: Model selection + async job handling + minimal dashboard (frontend)
 - [ ] Step 5: Catalogue/PDF export via WeasyPrint
 - [ ] Step 6: Validation round — 15-20 real target designers, before/after examples, willingness-to-pay check
 - [ ] Step 7: Credits + Stripe (only after Step 6 signals go)
 
-**Current step: 3 — complete and verified end-to-end (real auth, real upload, real async job, real Gemini composites, all polled successfully). Apparel path has a strong real-photo quality spot-check (Step 2); jewelry quality is still untested with real photos (mechanics only). Billing is live (₹500/month credit, ~$0.17 spent total today) — stay deliberate about API spend. Ready to start Step 4 (frontend).**
+**Current step: 4 — frontend scaffolded and buildable (auth, upload, model picker, job polling, results gallery). Apparel path has a strong real-photo quality spot-check (Step 2); jewelry quality is still untested with real photos (mechanics only). Billing is live (₹500/month credit, ~$0.20 spent total so far) — stay deliberate about API spend. Not yet tested against a live backend end-to-end from the browser — next session should run both servers together and walk the full flow.**
 
 ## Decision/validation gate reminder
 
@@ -81,4 +81,19 @@ Step 2 is the real go/no-go checkpoint, now split into two independent checks (a
 - Minor non-blocking code smell seen in server logs: Pydantic warns `model_id` field name conflicts with its own protected `model_` namespace — cosmetic only, didn't affect behavior; could rename later or set `protected_namespaces = ()` if the warning becomes annoying.
 - Test server was run locally on port 8001 and stopped after testing (not left running, to free RAM on this dev machine, which OOM'd earlier today).
 - **Total Gemini spend today: ~$0.17 of the ₹500/month credit** across all testing (Phase 2 mechanics, Phase 2 real-photo spot-check, Phase 3 end-to-end).
+### 2026-11-01 — Quality fix: brand tag bleeding into front of composite
+- User spotted a real generation defect: the kurta's flat-lay product photo has its brand/size tag flipped out near the collar for photography purposes; Gemini was copying it onto the front of the rendered garment on the model, since it has no garment-construction knowledge that tags are sewn on the inside back of the neckline.
+- Fixed via prompt engineering only (no preprocessing/code pipeline needed): added an explicit instruction to `generate_apparel_composite`'s prompt in `backend/app/services/generation.py` telling the model the tag is interior/back-of-neck and should never render. Re-tested with the same real kurta + real model photo (one call, ~$0.03) — **tag is gone, texture/identity quality unchanged.** Confirmed by eye on `backend/test_output/real_apparel_result.png`.
+- Worth knowing for future quality issues: prompt engineering was the cheap, effective first move here. Other options discussed but not needed: pre-cleaning the product photo via inpainting (more robust but more engineering), or garment-landmark mapping (better suited to fit/placement issues than stray-object issues like this one).
+- **Total Gemini spend today: ~$0.20 of the ₹500/month credit.**
 - Next action: Phase 4 (frontend — Next.js upload form, model picker, job polling dashboard) per ARCHITECTURE.md §11. Jewelry real-photo quality testing (deferred earlier) can happen anytime independently. Before frontend auth wiring, note the ES256/JWKS finding above — Supabase JS client handles this automatically, so it's only relevant for direct backend testing like today's.
+
+### 2026-11-01 — Step 4 complete: frontend scaffolded (light/white/gold/silver theme)
+- **Node.js wasn't installed on this machine.** User ran `sudo apt install -y nodejs npm` manually (interactive sudo can't run through this session) — now on Node v22.22.1 / npm 9.2.0.
+- Scaffolded `frontend/` with `create-next-app` (Next 16.4.3, App Router, TypeScript, Tailwind v4, no src dir). Added `@supabase/supabase-js` for client-side auth.
+- Theme: plain white background, gold accent (`#b8912f`/`#93711f`), silver/grey for muted text and borders — defined as CSS variables + Tailwind v4 `@theme inline` tokens in `frontend/app/globals.css` (no dark-mode override; user wants it light-only). Headings use Playfair Display (serif), body uses Inter — set up in `frontend/app/layout.tsx`.
+- Built as a single-page app (no routing needed for this POC scope): `lib/supabase.ts` (client), `lib/useAuth.ts` (session hook), `lib/api.ts` (typed fetch wrappers for `/products/upload`, `/models`, `/jobs`, `/jobs/{id}`, attaching the Supabase bearer token), `components/AuthForm.tsx` (sign in/up), `components/ModelPicker.tsx`, `components/JobCard.tsx`, `components/Dashboard.tsx` (upload → pick model → generate → poll job status every 3s → show results). `app/page.tsx` just switches between `AuthForm` and `Dashboard` based on session state.
+- Added CORS middleware to `backend/app/main.py` (`allow_origins=["http://localhost:3000"]`) — wasn't there before, needed for the browser to call the FastAPI backend directly.
+- `frontend/.env.local` (gitignored) holds `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (the anon/publishable key — different from the service key backend uses; user supplied it directly), and `NEXT_PUBLIC_API_URL=http://localhost:8000`.
+- Verified `npx tsc --noEmit` clean, `npm run build` succeeds, and `npm run dev` serves the sign-in page correctly at `localhost:3000`. **Not yet tested against a running backend** — no real upload/model-pick/generate/poll cycle has happened through the browser yet. Jewelry upload currently has no piece_type selector in the UI, matching the existing backend POC gap (hardcoded to `earring` — see Step 3 log entry).
+- Next action: run backend (`uvicorn app.main:app` from `backend/`, port 8000 to match `NEXT_PUBLIC_API_URL`) and frontend (`npm run dev` from `frontend/`) together, walk the full flow once with a real product photo to confirm the integration end-to-end.

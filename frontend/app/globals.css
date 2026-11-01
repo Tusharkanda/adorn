@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f4efe3;
+  --surface: #fffdf8;
+  --surface-sunken: #ece4d4;
+  --foreground: #241f18;
+  --muted: #827a6c;
+  --border: #e3dac6;
+  --rust: #b1502e;
+  --rust-dark: #8f3f23;
+  --silver: #9a9488;
+  --success: #4c7a4f;
+  --success-bg: #e7efe2;
+  --amber: #9c6b23;
+  --amber-bg: #f4ead3;
+  --danger: #a4402f;
+  --danger-bg: #f5e4dd;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-rust: var(--rust);
+  --color-rust-dark: var(--rust-dark);
+  --color-silver: var(--silver);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-amber: var(--amber);
+  --color-amber-bg: var(--amber-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-playfair);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

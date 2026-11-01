@@ -58,7 +58,10 @@ def generate_apparel_composite(cutout_bytes: bytes, model_photo_bytes: bytes, fr
     prompt = (
         f"Composite this garment onto this model photo, photorealistic, {framing} framing. "
         "Preserve the garment's exact color, pattern, and texture. Keep the model's pose, "
-        "face, and background unchanged — only replace/add the clothing."
+        "face, and background unchanged — only replace/add the clothing. "
+        "The product photo is a flat-lay shot: any visible brand/size tag near the collar "
+        "is sewn on the INSIDE BACK of the neckline and is never visible from the front or "
+        "on a worn garment — do not render it anywhere in the output image."
     )
     response = _get_client().models.generate_content(
         model=MODEL_NAME,
