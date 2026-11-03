@@ -1,6 +1,6 @@
 "use client";
 
-import type { ModelLibraryEntry } from "@/lib/api";
+import { modelOccasions, modelPoseUrls, type ModelLibraryEntry } from "@/lib/api";
 
 const ANGLE_KEYS = ["front", "three_quarter", "closeup"] as const;
 const ANGLE_LABEL: Record<(typeof ANGLE_KEYS)[number], string> = {
@@ -26,6 +26,8 @@ export default function ModelPicker({
     <div className="grid grid-cols-2 gap-5 sm:grid-cols-3">
       {models.map((model) => {
         const active = model.id === selectedId;
+        const poseUrls = modelPoseUrls(model);
+        const occasionCount = modelOccasions(model).length;
         return (
           <button
             key={model.id}
@@ -37,7 +39,7 @@ export default function ModelPicker({
           >
             <div className="grid grid-cols-3 gap-px bg-border">
               {ANGLE_KEYS.map((key) => {
-                const url = model.base_image_urls[key];
+                const url = poseUrls[key];
                 return (
                   <div key={key} className="relative aspect-[3/4] overflow-hidden bg-surface-sunken">
                     {url && (
@@ -53,7 +55,12 @@ export default function ModelPicker({
               })}
             </div>
             <div className="flex items-center justify-between px-3 py-2.5">
-              <p className="text-sm font-medium text-foreground">{model.name}</p>
+              <div>
+                <p className="text-sm font-medium text-foreground">{model.name}</p>
+                {occasionCount > 1 && (
+                  <p className="text-xs text-muted">{occasionCount} looks</p>
+                )}
+              </div>
               {active && (
                 <span className="eyebrow text-rust-dark">✓ Selected</span>
               )}

@@ -8,12 +8,32 @@ async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export type PoseUrls = Record<string, string>;
+
+// Either a flat single-look model ({pose: url}) or a model with multiple
+// styled occasions ({occasion: {pose: url}}), e.g. bridal/festive/daily.
 export type ModelLibraryEntry = {
   id: number;
   name: string;
-  base_image_urls: Record<string, string>;
+  base_image_urls: Record<string, string | PoseUrls>;
   active: boolean;
 };
+
+export function modelOccasions(model: ModelLibraryEntry): string[] {
+  const first = Object.values(model.base_image_urls)[0];
+  if (typeof first !== "object" || first === null) return [];
+  return Object.keys(model.base_image_urls);
+}
+
+export function modelPoseUrls(
+  model: ModelLibraryEntry,
+  occasion?: string | null
+): PoseUrls {
+  const occasions = modelOccasions(model);
+  if (occasions.length === 0) return model.base_image_urls as PoseUrls;
+  const key = occasion && occasions.includes(occasion) ? occasion : occasions[0];
+  return (model.base_image_urls as Record<string, PoseUrls>)[key] ?? {};
+}
 
 export type JobStatus = {
   status: "pending" | "processing" | "complete" | "needs_review" | "failed";
@@ -47,12 +67,17 @@ export async function uploadProduct(
 
 export async function createJob(
   productId: number,
-  modelId: number
+  modelId: number,
+  occasion?: string | null
 ): Promise<{ job_id: number }> {
   const res = await fetch(`${API_URL}/jobs`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify({ product_id: productId, model_id: modelId }),
+    body: JSON.stringify({
+      product_id: productId,
+      model_id: modelId,
+      occasion: occasion ?? null,
+    }),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();

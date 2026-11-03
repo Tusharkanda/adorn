@@ -6,6 +6,7 @@ export type Shoot = {
   jobId: number;
   title: string;
   modelName: string;
+  occasion: string | null;
   productCutoutUrl: string;
   createdAt: number;
   job: JobStatus;
@@ -88,7 +89,10 @@ export default function ShootCard({
             : "On-model result · Original"}
         </p>
         <h3 className="mt-1 font-serif text-base text-foreground">{shoot.title}</h3>
-        <p className="mt-0.5 text-sm text-muted">Model: {shoot.modelName}</p>
+        <p className="mt-0.5 text-sm text-muted">
+          Model: {shoot.modelName}
+          {shoot.occasion && <span className="capitalize"> · {shoot.occasion}</span>}
+        </p>
 
         <div className="mt-3 flex items-center justify-between">
           <span

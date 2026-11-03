@@ -36,8 +36,8 @@ def create_job(
         raise HTTPException(status_code=404, detail="model not found")
 
     cur.execute(
-        "insert into jobs (user_id, product_id, model_id, status) values (%s, %s, %s, 'pending') returning id",
-        (user["id"], body.product_id, body.model_id),
+        "insert into jobs (user_id, product_id, model_id, status, occasion) values (%s, %s, %s, 'pending', %s) returning id",
+        (user["id"], body.product_id, body.model_id, body.occasion),
     )
     job_id = cur.fetchone()["id"]
     conn.commit()
@@ -68,12 +68,27 @@ def _fetch_bytes(url: str) -> bytes:
     return httpx.get(url, timeout=30).content
 
 
+def _resolve_pose_urls(base_image_urls: dict, occasion: str | None) -> dict:
+    """model_library.base_image_urls is either flat ({pose: url}, the
+    original single-look shape) or nested ({occasion: {pose: url}}, for
+    models with multiple styled looks like bridal/festive/daily). Resolve to
+    a flat {pose: url} dict either way, picking the requested occasion (or
+    the first available one if none was requested/found)."""
+    if not base_image_urls:
+        return {}
+    if not isinstance(next(iter(base_image_urls.values())), dict):
+        return base_image_urls
+    if occasion and occasion in base_image_urls:
+        return base_image_urls[occasion]
+    return next(iter(base_image_urls.values()))
+
+
 def _process_job(job_id: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(
         """
-        select j.id, j.product_id, j.model_id, p.category, p.cutout_image_url, m.base_image_urls
+        select j.id, j.product_id, j.model_id, j.occasion, p.category, p.cutout_image_url, m.base_image_urls
         from jobs j
         join products p on p.id = j.product_id
         join model_library m on m.id = j.model_id
@@ -88,7 +103,7 @@ def _process_job(job_id: int):
 
     try:
         cutout_bytes = _fetch_bytes(job["cutout_image_url"])
-        base_urls = job["base_image_urls"]
+        base_urls = _resolve_pose_urls(job["base_image_urls"], job["occasion"])
 
         if job["category"] == "apparel":
             result_urls = {}

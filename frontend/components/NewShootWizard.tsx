@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { createJob, uploadProduct, type ModelLibraryEntry } from "@/lib/api";
+import {
+  createJob,
+  modelOccasions,
+  modelPoseUrls,
+  uploadProduct,
+  type ModelLibraryEntry,
+} from "@/lib/api";
 import ModelPicker from "./ModelPicker";
 
 const STEPS = ["Upload product", "Choose model", "Create imagery"] as const;
@@ -17,6 +23,7 @@ export default function NewShootWizard({
     jobId: number;
     title: string;
     modelName: string;
+    occasion: string | null;
     productCutoutUrl: string;
   }) => void;
 }) {
@@ -28,10 +35,14 @@ export default function NewShootWizard({
   const [uploading, setUploading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [modelId, setModelId] = useState<number | null>(null);
+  const [occasion, setOccasion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedModel = models.find((m) => m.id === modelId) ?? null;
+  const availableOccasions = selectedModel ? modelOccasions(selectedModel) : [];
+  const needsOccasion = availableOccasions.length > 1;
+  const occasionReady = !needsOccasion || !!occasion;
 
   async function handleFile(selected: File | null) {
     if (!selected) return;
@@ -62,11 +73,12 @@ export default function NewShootWizard({
     setError(null);
     setCreating(true);
     try {
-      const { job_id } = await createJob(productId, modelId);
+      const { job_id } = await createJob(productId, modelId, occasion);
       onCreated({
         jobId: job_id,
         title: file?.name.replace(/\.[^.]+$/, "") ?? "Untitled shoot",
         modelName: selectedModel.name,
+        occasion,
         productCutoutUrl: cutoutUrl!,
       });
     } catch (e) {
@@ -285,7 +297,36 @@ export default function NewShootWizard({
             </div>
           </div>
 
-          <ModelPicker models={models} selectedId={modelId} onSelect={setModelId} />
+          <ModelPicker
+            models={models}
+            selectedId={modelId}
+            onSelect={(id) => {
+              setModelId(id);
+              setOccasion(null);
+            }}
+          />
+
+          {needsOccasion && (
+            <div className="mt-6">
+              <p className="eyebrow mb-2">Choose an occasion for {selectedModel?.name}</p>
+              <div className="flex flex-wrap gap-2">
+                {availableOccasions.map((occ) => (
+                  <button
+                    key={occ}
+                    type="button"
+                    onClick={() => setOccasion(occ)}
+                    className={`rounded-full border px-4 py-1.5 text-sm capitalize transition ${
+                      occasion === occ
+                        ? "border-rust bg-rust text-[#faf6ec]"
+                        : "border-border text-foreground hover:border-silver"
+                    }`}
+                  >
+                    {occ}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <p className="mt-6 text-xs text-muted">
             Our models are AI generated. Your product stays at the heart of every image. Fit
@@ -294,13 +335,15 @@ export default function NewShootWizard({
 
           <div className="mt-6 flex items-center justify-between">
             <p className="text-sm text-foreground">
-              {selectedModel
-                ? `${selectedModel.name} is your muse.`
-                : "Select a model to continue."}
+              {!selectedModel
+                ? "Select a model to continue."
+                : needsOccasion && !occasion
+                ? `Choose an occasion for ${selectedModel.name}.`
+                : `${selectedModel.name} is your muse.`}
             </p>
             <button
               type="button"
-              disabled={!modelId}
+              disabled={!modelId || !occasionReady}
               onClick={() => setStep(3)}
               className="rounded-md bg-rust px-4 py-2.5 text-sm font-medium text-[#faf6ec] transition hover:bg-rust-dark disabled:opacity-40"
             >
@@ -330,16 +373,19 @@ export default function NewShootWizard({
             <span className="text-2xl text-muted">+</span>
             <div className="text-center">
               <div className="h-32 w-28 overflow-hidden rounded-md border border-border bg-surface-sunken">
-                {selectedModel?.base_image_urls.front && (
+                {selectedModel && modelPoseUrls(selectedModel, occasion).front && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={selectedModel.base_image_urls.front}
+                    src={modelPoseUrls(selectedModel, occasion).front}
                     alt={selectedModel.name}
                     className="h-full w-full object-cover"
                   />
                 )}
               </div>
-              <p className="eyebrow mt-2">{selectedModel?.name}</p>
+              <p className="eyebrow mt-2">
+                {selectedModel?.name}
+                {occasion ? ` · ${occasion}` : ""}
+              </p>
             </div>
           </div>
 
