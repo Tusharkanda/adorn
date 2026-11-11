@@ -19,6 +19,7 @@ class JobCreateRequest(BaseModel):
     product_id: int
     model_id: int
     occasion: Optional[str] = None
+    environment: Optional[str] = None
 
 
 class JobCreateResponse(BaseModel):

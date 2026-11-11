@@ -68,7 +68,8 @@ export async function uploadProduct(
 export async function createJob(
   productId: number,
   modelId: number,
-  occasion?: string | null
+  occasion?: string | null,
+  environment?: string | null
 ): Promise<{ job_id: number }> {
   const res = await fetch(`${API_URL}/jobs`, {
     method: "POST",
@@ -77,6 +78,7 @@ export async function createJob(
       product_id: productId,
       model_id: modelId,
       occasion: occasion ?? null,
+      environment: environment ?? null,
     }),
   });
   if (!res.ok) throw new Error(await res.text());

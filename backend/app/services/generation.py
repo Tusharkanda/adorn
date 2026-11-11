@@ -53,12 +53,27 @@ def _extract_image_bytes(response) -> bytes:
     raise RuntimeError("Gemini response contained no image data")
 
 
-def generate_apparel_composite(cutout_bytes: bytes, model_photo_bytes: bytes, framing: str) -> bytes:
-    """framing: 'full_body' or 'closeup'."""
+def generate_apparel_composite(
+    cutout_bytes: bytes,
+    model_photo_bytes: bytes,
+    framing: str,
+    environment: str | None = None,
+) -> bytes:
+    """framing: 'full_body' or 'closeup'. environment: optional free-text
+    scene/background description (e.g. "outdoor golden hour", "festive bokeh
+    lights") to replace the base photo's background with; if not given, the
+    base photo's background is left untouched."""
+    background_instruction = (
+        f"Replace the background with this setting: {environment}. Match the lighting "
+        "and color temperature of the new background onto the model and garment so the "
+        "result looks like one real photograph, not a cutout."
+        if environment
+        else "Keep the model's background unchanged."
+    )
     prompt = (
         f"Composite this garment onto this model photo, photorealistic, {framing} framing. "
-        "Preserve the garment's exact color, pattern, and texture. Keep the model's pose, "
-        "face, and background unchanged — only replace/add the clothing. "
+        "Preserve the garment's exact color, pattern, and texture. Keep the model's pose "
+        f"and face unchanged — only replace/add the clothing. {background_instruction} "
         "The product photo is a flat-lay shot: any visible brand/size tag near the collar "
         "is sewn on the INSIDE BACK of the neckline and is never visible from the front or "
         "on a worn garment — do not render it anywhere in the output image."
@@ -132,13 +147,24 @@ def detect_jewelry_anchor(model_photo_bytes: bytes, piece_type: str) -> dict:
 
 
 def generate_jewelry_composite(
-    cutout_bytes: bytes, model_photo_bytes: bytes, anchor_box: list, piece_type: str
+    cutout_bytes: bytes,
+    model_photo_bytes: bytes,
+    anchor_box: list,
+    piece_type: str,
+    environment: str | None = None,
 ) -> bytes:
+    background_instruction = (
+        f"Replace the background with this setting: {environment}. Match the lighting and "
+        "color temperature of the new background onto the model and piece so the result "
+        "looks like one real photograph, not a cutout."
+        if environment
+        else "Keep the model's background unchanged."
+    )
     prompt = (
         f"Composite this {piece_type} onto this model photo at approximately pixel region "
         f"{anchor_box} (x0,y0,x1,y1), photorealistic. Preserve the piece's reflectivity, "
-        "metal/gem detail, and scale relative to the anchor region. Keep the model's face, "
-        "skin, and background unchanged."
+        f"metal/gem detail, and scale relative to the anchor region. Keep the model's face "
+        f"and skin unchanged. {background_instruction}"
     )
     response = _get_client().models.generate_content(
         model=MODEL_NAME,

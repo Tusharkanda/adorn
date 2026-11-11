@@ -55,6 +55,7 @@ export default function Dashboard({ email }: { email: string }) {
     title: string;
     modelName: string;
     occasion: string | null;
+    environmentLabel: string | null;
     productCutoutUrl: string;
   }) {
     setShoots((prev) => [
@@ -63,6 +64,7 @@ export default function Dashboard({ email }: { email: string }) {
         title: args.title,
         modelName: args.modelName,
         occasion: args.occasion,
+        environmentLabel: args.environmentLabel,
         productCutoutUrl: args.productCutoutUrl,
         createdAt: Date.now(),
         job: {

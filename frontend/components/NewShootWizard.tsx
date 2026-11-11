@@ -12,6 +12,29 @@ import ModelPicker from "./ModelPicker";
 
 const STEPS = ["Upload product", "Choose model", "Create imagery"] as const;
 
+const ENVIRONMENT_PRESETS = [
+  {
+    key: "studio",
+    label: "Studio · plain",
+    prompt: "a plain, softly lit studio background with a seamless neutral backdrop",
+  },
+  {
+    key: "outdoor",
+    label: "Outdoor · daylight",
+    prompt: "an outdoor setting in soft natural daylight, with a softly blurred greenery background",
+  },
+  {
+    key: "festive",
+    label: "Festive · bokeh",
+    prompt: "a warm festive setting with soft golden bokeh lights in the background",
+  },
+  {
+    key: "traditional",
+    label: "Traditional · textured",
+    prompt: "a warm indoor setting with a textured wood or jute backdrop",
+  },
+] as const;
+
 export default function NewShootWizard({
   models,
   onExit,
@@ -24,6 +47,7 @@ export default function NewShootWizard({
     title: string;
     modelName: string;
     occasion: string | null;
+    environmentLabel: string | null;
     productCutoutUrl: string;
   }) => void;
 }) {
@@ -36,8 +60,20 @@ export default function NewShootWizard({
   const [creating, setCreating] = useState(false);
   const [modelId, setModelId] = useState<number | null>(null);
   const [occasion, setOccasion] = useState<string | null>(null);
+  const [envChoice, setEnvChoice] = useState<string>("keep");
+  const [customEnv, setCustomEnv] = useState("");
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedPreset = ENVIRONMENT_PRESETS.find((p) => p.key === envChoice);
+  const environmentPrompt =
+    envChoice === "keep"
+      ? null
+      : envChoice === "custom"
+      ? customEnv.trim() || null
+      : selectedPreset?.prompt ?? null;
+  const environmentLabel =
+    envChoice === "keep" ? null : envChoice === "custom" ? customEnv.trim() || null : selectedPreset?.label ?? null;
 
   const selectedModel = models.find((m) => m.id === modelId) ?? null;
   const availableOccasions = selectedModel ? modelOccasions(selectedModel) : [];
@@ -73,12 +109,13 @@ export default function NewShootWizard({
     setError(null);
     setCreating(true);
     try {
-      const { job_id } = await createJob(productId, modelId, occasion);
+      const { job_id } = await createJob(productId, modelId, occasion, environmentPrompt);
       onCreated({
         jobId: job_id,
         title: file?.name.replace(/\.[^.]+$/, "") ?? "Untitled shoot",
         modelName: selectedModel.name,
         occasion,
+        environmentLabel,
         productCutoutUrl: cutoutUrl!,
       });
     } catch (e) {
@@ -387,6 +424,58 @@ export default function NewShootWizard({
                 {occasion ? ` · ${occasion}` : ""}
               </p>
             </div>
+          </div>
+
+          <div className="mt-8 text-left">
+            <p className="eyebrow mb-2 text-center">Choose a setting (optional)</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEnvChoice("keep")}
+                className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                  envChoice === "keep"
+                    ? "border-rust bg-rust text-[#faf6ec]"
+                    : "border-border text-foreground hover:border-silver"
+                }`}
+              >
+                Keep model&rsquo;s original background
+              </button>
+              {ENVIRONMENT_PRESETS.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => setEnvChoice(preset.key)}
+                  className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                    envChoice === preset.key
+                      ? "border-rust bg-rust text-[#faf6ec]"
+                      : "border-border text-foreground hover:border-silver"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setEnvChoice("custom")}
+                className={`rounded-full border px-4 py-1.5 text-sm transition ${
+                  envChoice === "custom"
+                    ? "border-rust bg-rust text-[#faf6ec]"
+                    : "border-border text-foreground hover:border-silver"
+                }`}
+              >
+                Custom…
+              </button>
+            </div>
+
+            {envChoice === "custom" && (
+              <textarea
+                value={customEnv}
+                onChange={(e) => setCustomEnv(e.target.value)}
+                placeholder="Describe the setting, e.g. 'a sunlit marble courtyard with soft shadows'"
+                rows={2}
+                className="mt-3 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-rust"
+              />
+            )}
           </div>
 
           <div className="mt-8 flex items-center justify-center gap-3">

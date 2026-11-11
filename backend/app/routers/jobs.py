@@ -36,8 +36,11 @@ def create_job(
         raise HTTPException(status_code=404, detail="model not found")
 
     cur.execute(
-        "insert into jobs (user_id, product_id, model_id, status, occasion) values (%s, %s, %s, 'pending', %s) returning id",
-        (user["id"], body.product_id, body.model_id, body.occasion),
+        """
+        insert into jobs (user_id, product_id, model_id, status, occasion, environment)
+        values (%s, %s, %s, 'pending', %s, %s) returning id
+        """,
+        (user["id"], body.product_id, body.model_id, body.occasion, body.environment),
     )
     job_id = cur.fetchone()["id"]
     conn.commit()
@@ -88,7 +91,8 @@ def _process_job(job_id: int):
     cur = conn.cursor()
     cur.execute(
         """
-        select j.id, j.product_id, j.model_id, j.occasion, p.category, p.cutout_image_url, m.base_image_urls
+        select j.id, j.product_id, j.model_id, j.occasion, j.environment,
+               p.category, p.cutout_image_url, m.base_image_urls
         from jobs j
         join products p on p.id = j.product_id
         join model_library m on m.id = j.model_id
@@ -109,7 +113,9 @@ def _process_job(job_id: int):
             result_urls = {}
             for framing, pose in (("full_body", "front"), ("closeup", "closeup")):
                 model_bytes = _fetch_bytes(base_urls[pose])
-                composite = generation.generate_apparel_composite(cutout_bytes, model_bytes, framing)
+                composite = generation.generate_apparel_composite(
+                    cutout_bytes, model_bytes, framing, job["environment"]
+                )
                 key = f"jobs/{job_id}/{framing}.png"
                 result_urls[framing] = storage.upload_bytes(key, composite, "image/png")
 
@@ -126,7 +132,9 @@ def _process_job(job_id: int):
             confidence = anchor["confidence"]
             box = anchor["box"] or [0, 0, 0, 0]
 
-            composite = generation.generate_jewelry_composite(cutout_bytes, model_bytes, box, piece_type)
+            composite = generation.generate_jewelry_composite(
+                cutout_bytes, model_bytes, box, piece_type, job["environment"]
+            )
             key = f"jobs/{job_id}/{piece_type}.png"
             result_url = storage.upload_bytes(key, composite, "image/png")
 
